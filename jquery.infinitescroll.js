@@ -58,6 +58,7 @@
 	        		return path;
 	        	} else {
 	        		debug('Sorry, we couldn\'t parse your Next (Previous Posts) URL. Verify your the css selector points to the correct A tag. If you still get this error: yell, scream, and kindly ask for help at infinite-scroll.com.');
+	        		// Get rid of isInvalidPage to allow permalink to state
 	        		opts.isInvalidPage = true;  //prevent it from running on this page.
 	        	}
 	        }
@@ -100,7 +101,7 @@
         
         // Start plugin
         var opts = $.infinitescroll.opts = $.extend({}, $.infinitescroll.defaults, options),
-        	props = $.infinitescroll, // shorthand
+        	props = $.infinitescroll,
         	innerContainerHeight, box, frag, desturl, pause, error, errorStatus, method, result;
         	callback = $.fn.infinitescroll._callback = callback || function () { },
         	debug = $.fn.infinitescroll._debug,
@@ -203,6 +204,7 @@
             isPaused: false,
             container: undefined, //If left undefined uses window scroll, set as container for local scroll
             pixelsFromNavToBottom: undefined,
+            pagesLoaded: null,
             path: undefined
         },
         loadingImg: undefined,
@@ -222,23 +224,9 @@
     }
     
     
-    // shortcut function for...getting shortcuts
-    $.fn.infinitescroll._shorthand = function infscr_shorthand() {
-    
-    	// someone should write this, and it would rule
-    	
-    	var args = Array.prototype.slice.call(arguments),
-    		result = [];
-    	
-    	return result;
-    	
-    };
-    
-    
     // Near Bottom (isNearBottom)
     $.fn.infinitescroll._nearbottom = function infscr_nearbottom() {
         
-        // replace with shorthand function
         var opts = $.infinitescroll.opts,
         	debug = $.fn.infinitescroll._debug,
         	hiddenHeight = $.fn.infinitescroll._hiddenheight;
@@ -264,11 +252,8 @@
     // Setup function (infscrSetup)
     $.fn.infinitescroll._setup = function infscr_setup() {
     
-    	// replace with shorthand function
-    	$.fn.infinitescroll._shorthand(props,opts,fn__nearbottom,fn_retrieve);
-    	
     	var props = $.infinitescroll,
-    		opts = $.infinitescroll.opts,
+    		opts = props.opts,
     		fn__nearbottom = $.fn.infinitescroll._nearbottom,
     		fn_retrieve = $.fn.infinitescroll.retrieve;
     	
@@ -282,20 +267,21 @@
     
     
     // Ajax function (kickOffAjax)
-    $.fn.infinitescroll.retrieve = function infscr_retrieve() {
+    $.fn.infinitescroll.retrieve = function infscr_retrieve(pageNum) {
     
-    	// replace with shorthand function
     	var props = $.infinitescroll,
     		opts = props.opts,
     		debug = $.fn.infinitescroll._debug,
     		loadCallback = $.fn.infinitescroll._loadcallback,
     		error = $.fn.infinitescroll._error,
     		path = opts.path, // get this
-    		box, frag, desturl, method, condition;
+    		box, frag, desturl, method, condition,
+    		pageNum = pageNum || null,
+    		getPage = (!!pageNum) ? pageNum : opts.currPage;
     		
     	
     	// If using retrieve method from a manual call, return
-    	if (opts.isDestroyed) return;
+    	if (opts.isDestroyed || opts===undefined) return false;
     	
     	
     	// we dont want to fire the ajax multiple times
@@ -319,7 +305,7 @@
             
             
             // INSERT DEBUG ERROR FOR invalid desturl
-            desturl = ($.isFunction(opts.pathParse)) ? opts.pathParse(path.join('2'), opts.currPage) : desturl = path.join(opts.currPage);
+            desturl = ($.isFunction(opts.pathParse)) ? opts.pathParse(path.join('2'), opts.currPage) : path.join(opts.currPage);
             // desturl = path.join(opts.currPage);
             
             // create switch parameter for append / callback
@@ -364,14 +350,16 @@
     // Load callback
     $.fn.infinitescroll._loadcallback = function infscr_loadcallback(box,data) {
     
-    	// replace with shorthand function
     	var props = $.infinitescroll,
-    		opts = $.infinitescroll.opts,
+    		opts = props.opts,
     		error = $.fn.infinitescroll._error,
     		showDoneMsg = $.fn.infinitescroll._donemsg,
     		callback = $.fn.infinitescroll._callback, // GLOBAL OBJECT FOR CALLBACK
     		result, frag;
     		
+    	// Return if plugin hasn't initialized
+        if (opts===undefined) return false;
+    	
     	result = (opts.isDone) ? 'done' : (!opts.appendCallback) ? 'no-append' : 'append';
         
         switch (result) {
@@ -442,9 +430,11 @@
     // Show done message.
     $.fn.infinitescroll._donemsg = function infscr_donemsg() {
     	
-    	// replace with shorthand function
     	var props = $.infinitescroll,
-    		opts = $.infinitescroll.opts;
+    		opts = props.opts;
+    	
+    	// Return if plugin hasn't initialized
+        if (opts===undefined) return false;
     		
     	props.loadingMsg
     		.find('img')
@@ -462,11 +452,13 @@
     // Pause function
     $.fn.infinitescroll.pause = function infscr_pause(pause) {
             
-        // Replace wirth shorthand
         var debug = $.fn.infinitescroll._debug,
         	opts = $.infinitescroll.opts;
         
-        // if pause is not 'pause' or 'resume', toggle it's value
+        // Return if plugin hasn't initialized
+        if (opts===undefined) return false;
+        
+        // If pause is not 'pause' or 'resume', toggle it's value
         if (pause !== 'pause' && pause !== 'resume' && pause !== 'toggle' && pause !== null) {
         	debug('Invalid argument. Toggling pause value instead');
         };
@@ -495,12 +487,14 @@
     // Error function
     $.fn.infinitescroll._error = function infscr_error(xhr) {
             
-        // replace with shorthand function
         var opts = $.infinitescroll.opts,
         	binder = (opts.container.nodeName == "HTML") ? $(window) : $(opts.container),
         	debug = $.fn.infinitescroll._debug,
         	showDoneMsg = $.fn.infinitescroll._donemsg,
         	error = (!opts.isDone && xhr == 404) ? 'end' : (opts.isDestroyed && xhr == 302) ? 'destroy' : 'unknown';
+        
+        // Return if plugin hasn't initialized
+        if (opts===undefined) return false;
         
         switch (error) {
         
@@ -539,12 +533,11 @@
     // Destroy current instance of the plugin
     $.fn.infinitescroll.destroy = function infscr_destroy() {
         
-        // replace with shorthand function
         var opts = $.infinitescroll.opts,
         	error = $.fn.infinitescroll._error;
         	
-        // Prevent destroying more than once
-        if (opts.isDestroyed) return;
+        // Return if plugin hasn't initialized or has been destroyed
+        if (opts.isDestroyed || opts===undefined) return false;
         
         opts.isDestroyed = true;
         return error([302]);
@@ -555,12 +548,14 @@
     // Scroll binding + unbinding
     $.fn.infinitescroll.binding = function infscr_binding(binding) {
         
-        // replace with shorthand function
         var opts = $.infinitescroll.opts,
         	setup = $.fn.infinitescroll._setup,
         	error = $.fn.infinitescroll._error,
         	debug = $.fn.infinitescroll._debug;
         	
+        // Return if plugin hasn't initialized
+        if (opts===undefined) return false;
+        
         switch(binding) {
         	
         	case 'bind':
