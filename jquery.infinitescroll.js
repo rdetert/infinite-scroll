@@ -227,8 +227,10 @@
     
     	// someone should write this, and it would rule
     	
-    	args = Array.prototype.slice.call(arguments);
-    	console.log(args);
+    	var args = Array.prototype.slice.call(arguments),
+    		result = [];
+    	
+    	return result;
     	
     };
     
