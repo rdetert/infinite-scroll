@@ -1,7 +1,7 @@
 /*!
 // Infinite Scroll jQuery plugin
 // copyright Paul Irish, licensed GPL & MIT
-// version 2.0b1.110419
+// version 2.0b1.110510
 
 // home and docs: http://www.infinite-scroll.com
 */
@@ -58,7 +58,7 @@
 	        		return path;
 	        	} else {
 	        		debug('Sorry, we couldn\'t parse your Next (Previous Posts) URL. Verify your the css selector points to the correct A tag. If you still get this error: yell, scream, and kindly ask for help at infinite-scroll.com.');
-	        		props.isInvalidPage = true;  //prevent it from running on this page.
+	        		opts.isInvalidPage = true;  //prevent it from running on this page.
 	        	}
 	        }
 	        debug('determinePath',path);
@@ -98,7 +98,7 @@
         }
         
         
-        // lets get started.
+        // Start plugin
         var opts = $.infinitescroll.opts = $.extend({}, $.infinitescroll.defaults, options),
         	props = $.infinitescroll, // shorthand
         	innerContainerHeight, box, frag, desturl, pause, error, errorStatus, method, result;
@@ -107,21 +107,21 @@
         	error = $.fn.infinitescroll._error,
         	pause = $.fn.infinitescroll.pause,
         	destroy = $.fn.infinitescroll.destroy,
-        	retrieve = $.fn.infinitescroll.retrieve,
         	binding = $.fn.infinitescroll.binding;
         	
         
-        // if selectors from opts aren't valid, return false
+        // If selectors from opts aren't valid, return false
         if (!areSelectorsValid(opts)) { return false; }
 
         
+        // If 
         opts.container = opts.container || document.documentElement;
 
         
-        // contentSelector we'll use for our ajax call
+        // contentSelector is 'page fragment' option for .load() / .ajax() calls
         opts.contentSelector = opts.contentSelector || this;
         
-        // Generate unique instance ID
+        // Generate unique instance ID if not specified
         opts.infid = (opts.infid == 0) ? generateInstanceID(opts.contentSelector) : opts.infid;
         
         // loadMsgSelector - if we want to place the load message in a specific selector, defaulted to the contentSelector
@@ -132,17 +132,18 @@
         var relurl = /(.*?\/\/).*?(\/.*)/,
         	path = $(opts.nextSelector).attr('href');
         	
+        //
         if (!path) { debug('Navigation selector not found'); return; }
 
-        // set the path to be a relative URL from root.
+        
+        // Set the path to be a relative URL from root.
         opts.path = determinePath(path);
         
         
-        // define loading msg
-        props.loadingMsg = $('<div id="infscr-loading" style="text-align: center;"><img alt="Loading..." src="' +
+        // Define loadingMsg
+        props.loadingMsg = $('<div id="infscr-loading" style="text-align: center;"><img alt="Loading..." src="' + opts.loadingImg + '" /><div>' + opts.loadingText + '</div></div>');
         
-                                  opts.loadingImg + '" /><div>' + opts.loadingText + '</div></div>');
-        // preload the image
+        // Preload loadingImg
         (new Image()).src = opts.loadingImg;
         
         
@@ -225,7 +226,10 @@
     $.fn.infinitescroll._shorthand = function infscr_shorthand() {
     
     	// someone should write this, and it would rule
-    
+    	
+    	args = Array.prototype.slice.call(arguments);
+    	console.log(args);
+    	
     };
     
     
@@ -241,16 +245,10 @@
         // computed as: document height - distance already scroll - viewport height - buffer
 
         if (opts.container.nodeName == "HTML") {
-            var pixelsFromWindowBottomToBottom = 0
-            + $(document).height()
             // have to do this bs because safari doesnt report a scrollTop on the html element
-            - ($(opts.container).scrollTop() || $(opts.container.ownerDocument.body).scrollTop())
-            - $(window).height();
-        }
-        else {
-            var pixelsFromWindowBottomToBottom = 0
-            + hiddenHeight(opts.container) - $(opts.container).scrollTop() - $(opts.container).height();
-
+            var pixelsFromWindowBottomToBottom = 0 + $(document).height() - ($(opts.container).scrollTop() || $(opts.container.ownerDocument.body).scrollTop()) - $(window).height();
+        } else {
+            var pixelsFromWindowBottomToBottom = 0 + hiddenHeight(opts.container) - $(opts.container).scrollTop() - $(opts.container).height();
         }
 
         debug('math:', pixelsFromWindowBottomToBottom, opts.pixelsFromNavToBottom);
@@ -261,26 +259,28 @@
     }
     
     
-    // Retrieve function (infscrSetup)
-    $.fn.infinitescroll.retrieve = function infscr_retrieve() {
+    // Setup function (infscrSetup)
+    $.fn.infinitescroll._setup = function infscr_setup() {
     
     	// replace with shorthand function
+    	$.fn.infinitescroll._shorthand(props,opts,fn__nearbottom,fn_retrieve);
+    	
     	var props = $.infinitescroll,
     		opts = $.infinitescroll.opts,
-    		isNearBottom = $.fn.infinitescroll._nearbottom,
-    		kickOffAjax = $.fn.infinitescroll._ajax;
+    		fn__nearbottom = $.fn.infinitescroll._nearbottom,
+    		fn_retrieve = $.fn.infinitescroll.retrieve;
     	
     	if (opts.isDuringAjax || opts.isInvalidPage || opts.isDone || opts.isDestroyed || opts.isPaused) return;
     	
-    	if (!isNearBottom(opts, props)) return;
+    	if (!fn__nearbottom(opts, props)) return;
     	
-    	kickOffAjax();    
+    	fn_retrieve();    
     
     };
     
     
     // Ajax function (kickOffAjax)
-    $.fn.infinitescroll._ajax = function infscr_ajax() {
+    $.fn.infinitescroll.retrieve = function infscr_retrieve() {
     
     	// replace with shorthand function
     	var props = $.infinitescroll,
@@ -291,6 +291,10 @@
     		path = opts.path, // get this
     		box, frag, desturl, method, condition;
     		
+    	
+    	// If using retrieve method from a manual call, return
+    	if (opts.isDestroyed) return;
+    	
     	
     	// we dont want to fire the ajax multiple times
         opts.isDuringAjax = true;
@@ -456,10 +460,11 @@
     // Pause function
     $.fn.infinitescroll.pause = function infscr_pause(pause) {
             
-        // if pauseValue is not 'pause' or 'resume', toggle it's value
+        // Replace wirth shorthand
         var debug = $.fn.infinitescroll._debug,
         	opts = $.infinitescroll.opts;
         
+        // if pause is not 'pause' or 'resume', toggle it's value
         if (pause !== 'pause' && pause !== 'resume' && pause !== 'toggle' && pause !== null) {
         	debug('Invalid argument. Toggling pause value instead');
         };
@@ -502,36 +507,29 @@
         		// die if we're out of pages.
                 debug('Page not found. Self-destructing...');
                 showDoneMsg();
-                opts.isDone = true;
-                opts.currPage = 1; // if you need to go back to this instance
-                opts.isPaused = false;
-                binder.unbind('smartscroll.infscr.' + opts.infid);
-        	
+                
         	break;
         	
         	case 'destroy':
         	
         		// die if destroyed.
                 debug('Destroyed. Going to next instance...');
-                opts.isDone = true;
-                opts.currPage = 1; // if you need to go back to this instance
-                opts.isPaused = false;
-                binder.unbind('smartscroll.infscr.' + opts.infid);
-        	
+                
         	break;
         	
         	case 'unknown':
         	
         		// unknown error.
                 debug('Unknown Error. WHAT DID YOU DO?!...');
-                showDoneMsg();
-                opts.isDone = true;
-                opts.currPage = 1; // if you need to go back to this instance
-                binder.unbind('smartscroll.infscr.' + opts.infid);
         	
         	break;
         
         }
+        
+        opts.isDone = true;
+        opts.currPage = 1; // if you need to go back to this instance
+        opts.isPaused = false;
+        binder.unbind('smartscroll.infscr.' + opts.infid);
         
     }
         
@@ -543,6 +541,9 @@
         var opts = $.infinitescroll.opts,
         	error = $.fn.infinitescroll._error;
         	
+        // Prevent destroying more than once
+        if (opts.isDestroyed) return;
+        
         opts.isDestroyed = true;
         return error([302]);
         
@@ -554,14 +555,14 @@
         
         // replace with shorthand function
         var opts = $.infinitescroll.opts,
-        	retrieve = $.fn.infinitescroll.retrieve,
+        	setup = $.fn.infinitescroll._setup,
         	error = $.fn.infinitescroll._error,
         	debug = $.fn.infinitescroll._debug;
         	
         switch(binding) {
         	
         	case 'bind':
-        		opts.binder.bind('smartscroll.infscr.'+opts.infid, retrieve);
+        		opts.binder.bind('smartscroll.infscr.'+opts.infid, setup);
         	break;
         	
         	case 'unbind':
