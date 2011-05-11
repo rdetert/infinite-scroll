@@ -192,6 +192,7 @@
             bufferPx: 40,
             orientation: 'height',
             errorCallback: function () { },
+            afterLoadCallback: function () { },
             currPage: 1,
             infid: 0, //Instance ID (Generated at setup)
             isDuringAjax: false,
@@ -327,6 +328,7 @@
             		debug('Using HTML via .load() method');
             		box.load(desturl + ' ' + opts.itemSelector, null, function(jqXHR,textStatus) {
             			loadCallback(box,jqXHR.responseText);
+                        $.infinitescroll.opts.afterLoadCallback.call();
             		});
             		
             	break;
@@ -342,6 +344,7 @@
             			complete: function _infscrAjax(jqXHR,textStatus) {
             				condition = (typeof(jqXHR.isResolved) !== 'undefined') ? (jqXHR.isResolved()) : (textStatus === "success" || textStatus === "notmodified");
             				(condition) ? loadCallback(box,jqXHR.responseText) : error([404]);
+                            $.infinitescroll.opts.afterLoadCallback.call();
             			}
             		});
             		
